@@ -1,0 +1,51 @@
+ import com.collibra.dgc.core.api.dto.instance.asset.AddAssetRequest;
+       import com.collibra.dgc.core.api.dto.instance.attribute.AddAttributeRequest;
+       import com.collibra.dgc.core.api.dto.workflow.StartWorkflowInstancesRequest;
+       import com.collibra.dgc.core.api.model.workflow.WorkflowBusinessItemType
+       
+loggerApi.info("************************Started create Asset**********************")
+     
+      
+loggerApi.info("Note in Creating Asset "+note.toString())
+loggerApi.info("Definition in Creating Asset "+definition.toString())
+loggerApi.info("Name of the Asset is "+Signifier)
+       def newAssetUuid = assetApi.addAsset(AddAssetRequest.builder()
+           .name(Signifier)
+           .displayName(Signifier)
+           .typeId(conceptType)
+           .domainId(string2Uuid(intakeVocabulary))
+           .build()).getId()
+		
+       addAttributeToAsset(newAssetUuid,definition,definitionAttributeTypeUUID)
+       addAttributeToAsset(newAssetUuid,note,noteAttributeTypeUUID)
+       
+
+       execution.setVariable("outputCreatedTermId",uuid2String(newAssetUuid))
+loggerApi.info("Asset Id in Create Asset "+outputCreatedTermId)
+
+       def addAttributeToAsset(assetUuid,attributeValue,attributeTypeUuid) {
+           if (attributeValue == null){
+               return;
+           }
+           attributeApi.addAttribute(AddAttributeRequest.builder()
+                    .assetId(assetUuid)
+                    .typeId(string2Uuid(attributeTypeUuid))
+                    .value(attributeValue.toString())
+                    .build())
+       }
+def setProperties =[:]
+setProperties.put("newNote",note)
+setProperties.put("newDefinition",definition)
+setProperties.put("Name",Signifier)
+setProperties.put("sourceId",outputCreatedTermId)
+
+
+
+       
+workflowInstanceApi.startWorkflowInstances(StartWorkflowInstancesRequest.builder()
+.workflowDefinitionId(string2Uuid("825e50fb-7e6e-41f2-8da5-880872d08cf9"))
+.businessItemType( WorkflowBusinessItemType.ASSET)
+.guestUserId(string2Uuid("6bb32fbd-3cf4-41c8-9925-3f685f1a6a83"))
+.formProperties(setProperties)
+.build())
+loggerApi.info("********************************* finished Asset creation ***************************")
