@@ -81,7 +81,7 @@ import com.collibra.dgc.core.api.dto.role.FindRolesRequest
     
     //Pass the required values to user definied method(createAsset)
     def newAssetUuid = createAsset(signifier, assetType, domainId)
-    execution.setVariable('outputCreatedTermId', uuid2String(newAssetUuid))
+    execution.setVariable("outputCreatedTermId", uuid2String(newAssetUuid))
 
     //Pass the attributes to user defined method(addAttributeToAsset)
     addAttributeToAsset(newAssetUuid, definition, definitionAttributeId)
@@ -104,7 +104,7 @@ import com.collibra.dgc.core.api.dto.role.FindRolesRequest
     formProperties.put("assetDefinition", definition.toString())
     formProperties.put("assetName", signifier.toString())
     formProperties.put("assetId", uuid2String(newAssetUuid))
-    formProperties.put('assignedUser', responsibleUsers[0])
+    formProperties.put('assignedUser', responsibleUsers[1])
     formProperties.put('domain', domain.toString())
     def workflowId = workflowDefinitionApi.getWorkflowDefinitionByProcessId(calledWorkflowName).getId()
 

@@ -4,30 +4,31 @@ import com.collibra.dgc.core.api.dto.instance.relation.AddRelationRequest;
 loggerApi.info("---------Start of Workflow----------")
 def relatedAsset = execution.getVariable("relatedAsset")
 
-loggerApi.info("----Addng Acoronyms to BT ${item.name}-------")
+loggerApi.info("----Addng Acoronyms to BT-------")
 
-addRelationsWithOneSourceAndMultipleTargetsToAsset(item.id,usesRelationId,relatedAsset)
+addAcronymRelationToAsset(assetId, acronymRelationId, relatedAsset)
 
-def addRelationsWithOneSourceAndMultipleTargetsToAsset(sourceUuid,relationTypeUuid,targetUuidList) {
-  if (targetUuidList == null || targetUuidList.isEmpty()){
+def addAcronymRelationToAsset(assetId, acronymRelationId, relatedAsset) {
+  if (relatedAsset == null || relatedAsset.isEmpty()){
       return
   }
   def addRelationRequests = []
 
-  targetUuidList.each{ t ->
+  relatedAsset.each{ t ->
 
    loggerApi.info("Adding Acronym ID => ${t}")
    addRelationRequests.add(AddRelationRequest.builder()
-       .sourceId(sourceUuid)
+       .sourceId(assetId)
        .targetId(t)
-       .typeId(string2Uuid(relationTypeUuid))
+       .typeId(string2Uuid(acronymRelationId))
        .build())
 }
+
 
   def relationList = []
   relationList = relationApi.addRelations(addRelationRequests)
 
-  loggerApi.info("----------Added Relations to BT ${item.id} =>>> ${relationList}--------------------")
+  loggerApi.info("----------Relation Added successfully--------------------")
 
 }
 loggerApi.info("---------End of Workflow----------")
