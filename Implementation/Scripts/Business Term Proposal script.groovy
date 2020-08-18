@@ -1,4 +1,4 @@
-/*Business Term Proposal Script V 1.0
+/*Business Term Proposal Script
 Author: N. Padma Gokul
 Description: This script is used to get the asset attributes such as 
 name, description, note etc and passes them to approval
@@ -7,7 +7,6 @@ workflow.
 
 import com.collibra.dgc.core.api.dto.instance.asset.AddAssetRequest
 import com.collibra.dgc.core.api.dto.instance.attribute.AddAttributeRequest
-import com.collibra.dgc.core.api.dto.workflow.StartWorkflowInstancesRequest
 import com.collibra.dgc.core.api.model.workflow.WorkflowBusinessItemType
 import com.collibra.dgc.core.api.model.workflow.WorkflowDefinition
 import com.collibra.dgc.core.api.dto.instance.responsibility.FindResponsibilitiesRequest
@@ -61,11 +60,10 @@ import com.collibra.dgc.core.api.dto.role.FindRolesRequest
 
     //Method to call approval workflow using workflowInstanceApi's "startWorkflowInstances"    
     def callWorkflow(workflowId, assetIdList, userId, formProperties) {    
-        workflowInstanceApi.startWorkflowInstances(StartWorkflowInstancesRequest.builder()
-            .workflowDefinitionId(workflowId)
+        workflowInstanceApi.startWorkflowInstances(builders.get("StartWorkflowInstancesRequest").workflowDefinitionId(workflowId)
             .businessItemType(WorkflowBusinessItemType.ASSET)
             .businessItemIds(assetIdList)
-            .guestUserId(userId)
+            .guestUserId(userId[0])
             .formProperties(formProperties).build())
 
         loggerApi.info("----------------Workflow Call Successful----------------")
@@ -105,16 +103,19 @@ import com.collibra.dgc.core.api.dto.role.FindRolesRequest
     formProperties.put("assetName", signifier.toString())
     formProperties.put("assetId", uuid2String(newAssetUuid))
     formProperties.put('assignedUser', responsibleUsers[1])
-    formProperties.put('domain', domain.toString())
+    formProperties.put('changedDomain', domain.toString())
+
     def workflowId = workflowDefinitionApi.getWorkflowDefinitionByProcessId(calledWorkflowName).getId()
 
     //Add the asset ID to the  list
     def assetIdList = []
     assetIdList.add(newAssetUuid)
+    loggerApi.info("---assetid: "+assetIdList)
 
     //Get the user ID of the workflow Initiator
     def userId = userApi.findUsers(builders.get("FindUsersRequest")
                     .name(requester).build()).getResults()*.getId()
+    loggerApi.info("------userId: "+userId)
     
     //Pass the values to user defined method(callWorkflow)
     callWorkflow(workflowId, assetIdList, userId, formProperties)

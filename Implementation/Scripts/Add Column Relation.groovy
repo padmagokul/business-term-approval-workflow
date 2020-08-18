@@ -1,13 +1,24 @@
-import com.collibra.dgc.core.api.dto.instance.relation.AddRelationRequest;
+/*Add Column relation script V 1.0
+Author: N. Padma Gokul
+Description: This script is used to add the column
+relation to the table. 
+*/
 
-def addRelationRequests = []
+    representsRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(representsRelation).sourceTypeName("Business Term")
+                                    .build()).getResults()*.getId()
 
-          addColumns.each{ t ->
-              addRelationRequests.add(AddRelationRequest.builder()
-                  .sourceId(item.id)
-                  .targetId(t)
-                  .typeId(string2Uuid("00000000-0000-0000-0000-000000007038"))
-                  .build())
-      }
+    def addRelation = []
+    //Add "represents" relation to asset
+    addColumns.each{t ->
+        addRelation.add(builders.get("AddRelationRequest").sourceId(string2Uuid(assetId)).targetId(t)
+            .typeId(representsRelationId[0]).build())
+    }
 
-      relationApi.addRelations(addRelationRequests)
+      relationApi.addRelations(addRelation)
+      loggerApi.info("-----Column Relation added--------")
+
+        def columnNames=[]
+        addColumns.each{ t ->
+        columnNames.add(assetApi.getAsset(t).getName())
+        }
+        execution.setVariable("columnNames", columnNames)

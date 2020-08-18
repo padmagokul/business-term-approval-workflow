@@ -24,7 +24,7 @@ import com.collibra.dgc.core.api.model.ResourceType
         return responsibleUserNames
     }
 
-
+    //Add Comments to asset
     commentApi.addComment(AddCommentRequest.builder().baseResourceId(string2Uuid(assetId))
             .baseResourceType(ResourceType.Asset)
             .content(adminComment.toString())
@@ -33,7 +33,7 @@ import com.collibra.dgc.core.api.model.ResourceType
 
     //Add the target domain to the list to get the users responsible for that domain
     def responsibilityList = []
-    responsibilityList.add(domain)
+    responsibilityList.add(changedDomain)
     loggerApi.info('-------Target Domain Fetched------')
 
     //Get Role ID for the given role
@@ -43,5 +43,5 @@ import com.collibra.dgc.core.api.model.ResourceType
 
     //Find the users(ID's) that are responsible for the target domain with specified role
     def dgAnalyst = responsibleUsers(responsibilityList, rolesList)
-    execution.setVariable('dgAnalystUser', dgAnalyst[0])
+    execution.setVariable('dgAnalyst', dgAnalyst[0])
     loggerApi.info('------Responsible user fetched successfully------')

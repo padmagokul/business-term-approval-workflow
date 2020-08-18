@@ -1,20 +1,30 @@
-def tempList=[]
-def newlist=[]
+/*List Columns script V 1.0
+Author: N. Padma Gokul
+Description: This script is used to list the columns of
+the tables that are added in "Add required tables" task. 
+*/
 
+def tableList=[]
+def columnsList=[]
+
+columnRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(columnRelation).sourceTypeName(columnSourceType)
+                                .build()).getResults()*.getId()
+
+//Get all columns from given table(s)
 relatedTables.each{t ->
-    tempList.add(relationApi.findRelations(builders.get("FindRelationsRequest")
-    .relationTypeId(string2Uuid(columnRelation))
-    .targetId(t).build()).getResults()*.getSource())
+        tableList.add(relationApi.findRelations(builders.get("FindRelationsRequest")
+            .relationTypeId(columnRelationId)
+            .targetId(t).build()).getResults()*.getSource())
 }
 
-loggerApi.info("---------First Columns List----------"+tempList)
-for(i=0;i<tempList.size;i++){
-    for(item in tempList[i]){
-        newlist.add(item.getId())
+//Add columns to list to show to DG Analyst
+loggerApi.info("---------First Columns List----------"+tableList)
+for(i=0;i<tableList.size;i++){
+    for(tables in tableList[i]){
+        columnsList.add(tables.getId())
     }
-    loggerApi.info("---List "+i+" added to newlist---")
 }
-execution.setVariable("columnList",newlist)
-loggerApi.info("---Column List variable created------")
 
-loggerApi.info("---------New Columns List----------"+newlist)
+execution.setVariable("columnList", columnsList)
+
+loggerApi.info("---------New Columns List----------"+columnsList)

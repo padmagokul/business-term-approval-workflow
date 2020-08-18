@@ -24,10 +24,6 @@ def addAcronymRelationToAsset(assetId, acronymRelationId, relatedAsset) {
        .build())
 }
 
-
-  def relationList = []
-  relationList = relationApi.addRelations(addRelationRequests)
-
   loggerApi.info("----------Relation Added successfully--------------------")
 
 }

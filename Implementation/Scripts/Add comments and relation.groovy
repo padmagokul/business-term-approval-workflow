@@ -1,7 +1,7 @@
-/*Add Comments and fetch responsible users script V 1.0
+/*Add Comments and relation script V 1.0
 Author: N. Padma Gokul
 Description: This script is used to add the comments to 
-the asset and to find the responsible users for the specified domain.
+the asset and to add any acronym relations to the asset.
 */
 
 import com.collibra.dgc.core.api.dto.instance.comment.AddCommentRequest
@@ -9,27 +9,32 @@ import com.collibra.dgc.core.api.model.ResourceType
 
 
     //Method to add any acronym relation to asset
-    def addAcronymRelationToAsset(assetId, acronymRelationId, relatedAsset) {
-        if (relatedAsset == null || relatedAsset.isEmpty()){
-            return
+    def addRelationToAsset(def sourceUuid,def relationTypeUuid,def targetUuid) {
+           if (targetUuid == null || targetUuid.isEmpty()){
+                return;
+           }
+       
+           relationApi.addRelation(builders.get("AddRelationRequest")
+                   .sourceId(string2Uuid(sourceUuid)).targetId(targetUuid)
+                   .typeId(relationTypeUuid).build())
         }
-        def addRelationRequests = []
-
-        relatedAsset.each{ t ->
-        loggerApi.info("Adding Acronym ID => ${t}")
-        addRelationRequests.add(builders.get('AddRelationRequest').sourceId(string2Uuid(assetId))
-            .targetId(t).typeId(string2Uuid(acronymRelationId)).build())
-        }
-
-        loggerApi.info("----------Relation Added successfully--------------------")
-    }
 
     //Method to find the users(ID's) that are responsible for the target domain with specified role
-    def responsibleUsers(responsibilityList, rolesList) {
+    def responsibleUsers(newDomain, roleName) {
+
+        //Add the target domain to the list to get the users responsible for that domain
+        def responsibilityList = []
+        responsibilityList.add(newDomain)
+
+        //Get Role ID for the given role
+        def rolesIdList = roleApi.findRoles(builders.get('FindRolesRequest').name(roleName) 
+                            .build()).getResults()*.getId()
+
         def responsibleUserIds = responsibilityApi.findResponsibilities(builders.get('FindResponsibilitiesRequest')
-                                    .resourceIds(responsibilityList).roleIds(rolesList) 
+                                    .resourceIds(responsibilityList).roleIds(rolesIdList) 
                                     .build()).getResults()*.getOwner()*.getId()
         loggerApi.info("-------------User IDs for the responsibility on domain------------ "+responsibleUserIds)
+
         def uuidList =[]
         for(userIds in responsibleUserIds){
             uuidList.add(uuid2String(userIds))
@@ -40,28 +45,27 @@ import com.collibra.dgc.core.api.model.ResourceType
         return responsibleUserNames
     }
 
+
+    //Add Comments to asset
     loggerApi.info('---------start add comment---------')
     commentApi.addComment(AddCommentRequest.builder().baseResourceId(string2Uuid(assetId))
             .baseResourceType(ResourceType.Asset)
-            .content(adminComment.toString())
+            .content(analystComment.toString())
             .build())
     loggerApi.info('--------Comments added successfully----------')
 
     def relatedAsset = execution.getVariable("relatedAsset")
-
+    
+    //Get Acronym Relation UUID
     loggerApi.info("----Adding Acoronyms to BT-------")
-    addAcronymRelationToAsset(assetId, acronymRelationId, relatedAsset)
-
-    //Add the target domain to the list to get the users responsible for that domain
-    def responsibilityList = []
-    responsibilityList.add(domain)
-    loggerApi.info('-------Target Domain Fetched------')
-
-    //Get Role ID for the given role
-    def rolesList = roleApi.findRoles(builders.get('FindRolesRequest').name('Technical Steward') 
-                            .build()).getResults()*.getId()
-    loggerApi.info('-----Got Role Id-------')
+    acronymRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest")
+                                    .sourceTypeName(acronymRelationSourceType).targetTypeName(acronymRelationTargetType)
+                                    .role(acronymRelation).build()).getResults()*.getId()
+    loggerApi.info("-----Got acronym id "+acronymRelationId)
+    addRelationToAsset(assetId, acronymRelationId, relatedAsset)
 
     //Find the users(ID's) that are responsible for the target domain with specified role
-    def dgAnalyst = responsibleUsers(responsibilityList, rolesList)
+    execution.setVariable('technicalStewardUser', responsibleUsers(changedDomain, technicalSteward))
+    execution.setVariable('businessStewardUser', responsibleUsers(changedDomain, businessSteward))
+    loggerApi.info("------business stewards------- "+businessStewardUser)
     loggerApi.info('------Responsible user fetched successfully------')
