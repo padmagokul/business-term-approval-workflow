@@ -1,7 +1,9 @@
-/*Add Column relation script V 1.0
+/*
+Script Name: List Columns Script
 Author: N. Padma Gokul
-Description: This script is used to add the column
-relation to the table. 
+Version: v1.0
+Version History: -
+Purpose: This script is used to add the column relation to the asset.
 */
 
     representsRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(representsRelation).sourceTypeName("Business Term")

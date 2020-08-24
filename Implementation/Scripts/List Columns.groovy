@@ -1,7 +1,9 @@
-/*List Columns script V 1.0
+/*
+Script Name: List Columns Script
 Author: N. Padma Gokul
-Description: This script is used to list the columns of
-the tables that are added in "Add required tables" task. 
+Version: v1.0
+Version History: -
+Purpose: This script is used to list all the columns of the added tables.
 */
 
 def tableList=[]

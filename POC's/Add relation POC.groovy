@@ -8,7 +8,7 @@ loggerApi.info("----Addng Acoronyms to BT ${item.name}-------")
 
 usesRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(usesRelationId).build()).getResults()*.getId()
 loggerApi.info("-------Got Acronym Relation Id------------")
-
+         
 addRelationsWithOneSourceAndMultipleTargetsToAsset(item.id,usesRelationId,relatedAsset)
 
 def addRelationsWithOneSourceAndMultipleTargetsToAsset(sourceUuid,relationTypeUuid,targetUuidList) {
