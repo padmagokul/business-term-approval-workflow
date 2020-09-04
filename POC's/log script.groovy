@@ -1,1 +1,0 @@
-loggerApi.info("Name is "+name)

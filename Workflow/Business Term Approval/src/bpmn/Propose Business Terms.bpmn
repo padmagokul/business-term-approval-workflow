@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.collibra.com/apiv2">
+  <collaboration id="Collaboration">
+    <participant id="businessTermProposalWorkflow" name="Business Term Proposal " processRef="businessTermProposal"></participant>
+  </collaboration>
+  <process id="businessTermProposal" name="Propose Business Term Workflow" isExecutable="true">
+    <documentation>This process can be used to propose new business terms. The term will be created using the entered characteristics and placed in the temporary domain.</documentation>
+    <laneSet id="laneSet_businessTermProposal">
+      <lane id="businessTermProposalLane">
+        <flowNodeRef>createAsset</flowNodeRef>
+        <flowNodeRef>start</flowNodeRef>
+        <flowNodeRef>end</flowNodeRef>
+        <flowNodeRef>getGlossaryDomainId</flowNodeRef>
+        <flowNodeRef>setDomain</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start" name="Start" activiti:initiator="requester">
+      <extensionElements>
+        <activiti:formProperty id="intakeVocabulary" name="Domain where the asset is created" type="string" default="Temporary Domain" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="signifier" name="Name of the proposed asset*" type="string" required="true"></activiti:formProperty>
+        <activiti:formProperty id="definition" name="Proposed asset definition*" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="definitionAttribute" name="Definition Attribute" type="string" default="Definition" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="noteAttribute" name="Note Attribute" type="string" default="Note" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="conceptType" name="Type of Asset" type="string" default="Business Term" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="submit" name="Propose" type="button" required="true"></activiti:formProperty>
+        <activiti:formProperty id="calledWorkflowName" name="Name of Workflow to be called" type="string" default="customApprovalWorkflow" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="domainType" name="Domain Type" type="string" default="Glossary" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="dgAdminRole" name="DG Admin" type="string" default="DG Admin" readable="false" required="true"></activiti:formProperty>
+      </extensionElements>
+    </startEvent>
+    <scriptTask id="createAsset" name="Create Asset" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Business Term Proposal Script
+Author: N. Padma Gokul
+Version: 1.2
+Version History: v1.1 Implemented workflow call by code
+                 v1.2 Changed the way of assigning users to task
+Purpose: This script is used to get the asset attributes such as 
+name, description, note etc and passes them to approval
+workflow.
+*/
+
+import com.collibra.dgc.core.api.model.workflow.WorkflowBusinessItemType 
+import com.collibra.dgc.core.api.model.workflow.WorkflowDefinition
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+import com.collibra.dgc.core.api.dto.application.ApplicationInfo
+
+
+    //Values to be passed to user defined(createAsset) method
+    def note = execution.getVariable("note")
+    def definition = execution.getVariable("definition")
+    def domainId = domainApi.findDomains(builders.get("FindDomainsRequest").name(intakeVocabulary).build()).getResults()*.getId()
+    def assetType = assetTypeApi.findAssetTypes(builders.get("FindAssetTypesRequest").name(conceptType).build()).getResults()*.getId()
+
+    url = applicationApi.getInfo().getBuildNumber()
+    loggerApi.info("---Base URL----"+url)    
+        
+    //Pass the required values to user definied method(createAsset)
+    def newAssetUuid = createAsset(signifier, assetType, domainId)
+    execution.setVariable("outputCreatedTermId", uuid2String(newAssetUuid))
+    loggerApi.info("------domain------"+domain)
+
+    def definitionAttributeId = getAttributeId(definitionAttribute)
+    def noteAttributeId = getAttributeId(noteAttribute)
+
+    //Pass the attributes to user defined method(addAttributeToAsset)
+    addAttributeToAsset(newAssetUuid, definition, definitionAttributeId)
+    addAttributeToAsset(newAssetUuid, note, noteAttributeId)
+
+    //Add the target domain to the list to get the users responsible for that domain
+    def responsibilityList = []
+    responsibilityList.add(domain)
+
+    //Get Role ID for the given role
+    def rolesList = roleApi.findRoles(builders.get("FindRolesRequest").name(dgAdminRole) 
+                        .build()).getResults()*.getId()
+    loggerApi.info("----DG Admin role ID----"+rolesList)
+
+    //Find the users(ID's) that are responsible for the target domain with specified role
+    def responsibleUsers = responsibleUsers(responsibilityList, rolesList)
+    def dgAdminUserList = []
+
+    //Build the user expression for user task
+    for(int user=0; user<responsibleUsers.size;user++){
+        dgAdminUserList.add("user("+responsibleUsers[user]+")")
+    }
+
+    //Convert the list to CSV to use in user tasks
+    dgAdminUsers = utility.toCsv(dgAdminUserList)
+    loggerApi.info("--------CSV User-------"+dgAdminUsers)
+
+    //Values to be passed to the approval workflow
+    def formProperties =[:]
+    formProperties.put("assetNote", note.toString())
+    formProperties.put("assetDefinition", definition.toString())
+    formProperties.put("assetName", signifier.toString())
+    formProperties.put("assetId", uuid2String(newAssetUuid))
+    formProperties.put('dgAdmin', dgAdminUsers)
+    formProperties.put('changedDomain', domain.toString())
+
+    try{
+        def workflowId = workflowDefinitionApi.getWorkflowDefinitionByProcessId(calledWorkflowName).getId()
+        //Add the asset ID to the list
+        def assetIdList = []
+        assetIdList.add(newAssetUuid)
+
+        //Get the user ID of the workflow Initiator
+        def userId = userApi.findUsers(builders.get("FindUsersRequest")
+                        .name(requester).build()).getResults()*.getId()
+        
+        //Pass the values to user defined method(callWorkflow)
+        callWorkflow(workflowId, assetIdList, userId, formProperties)
+        loggerApi.info("-----------Business Term Proposal Successful---------------")
+    }
+    catch(Exception e){
+        loggerApi.error("Couldn't find target workflow")
+	    String errorMessage = translation.getMessage("Couldn't find target workflow")
+	    String errorTitle = translation.getMessage("workFlowNotFound");
+	    WorkflowException workflowException = new WorkflowException(errorMessage);
+	    workflowException.setTitleMessage(errorTitle);
+	    throw workflowException;
+    }
+
+    // loggerApi.info("------URL-------"+item.getUrl())
+
+    //User Defined methods start here
+    //Method to get attribute Id's
+    def getAttributeId(attributeType) {
+        attributeTypeId = attributeTypeApi.findAttributeTypes(builders.get("FindAttributeTypesRequest").name(attributeType).build())
+                                        .getResults()*.getId()
+        return attributeTypeId[0]
+    }
+    
+    //Method to create an asset using assetApi's "addAsset" method
+    def createAsset(signifier, assetType, domainId) {
+        def newAssetUuid = assetApi.addAsset(builders.get("AddAssetRequest").name(signifier).displayName(signifier)
+                                .typeId(assetType[0]).domainId(domainId[0])
+                                .build()).getId()
+        loggerApi.info('------Asset Created Successfully--------')
+        return newAssetUuid
+    }
+
+    //Method to add attributes to asset
+    def addAttributeToAsset(assetUuid, attributeValue, attributeTypeUuid) {
+        if (attributeValue == null){
+            return
+        }
+        attributeApi.addAttribute(builders.get("AddAttributeRequest").assetId(assetUuid).typeId(attributeTypeUuid)
+                .value(attributeValue.toString()).build())
+        loggerApi.info('------Attributes Added Successfully--------')
+    }
+
+    //Method to find the users(ID's) that are responsible for the target domain with specified role
+    def responsibleUsers(responsibilityList, rolesList) {
+        def responsibleUserIds = responsibilityApi.findResponsibilities(builders.get("FindResponsibilitiesRequest")
+                                    .resourceIds(responsibilityList).roleIds(rolesList) 
+                                    .build()).getResults()*.getOwner()*.getId()
+        loggerApi.info("-------------User ID's for the responsibility on domain------------ "+responsibleUserIds)
+        if(responsibleUserIds.isEmpty()){
+            loggerApi.error("Couldn't find Users for the given role")
+            String errorMessage = translation.getMessage("Couldn't find Users for the given role "+dgAdminRole)
+            String errorTitle = translation.getMessage("usersNotFound");
+            WorkflowException workflowException = new WorkflowException(errorMessage);
+            workflowException.setTitleMessage(errorTitle);
+            throw workflowException;
+        }
+
+        def uuidList =[]
+        for(userIds in responsibleUserIds){
+            uuidList.add(uuid2String(userIds))
+        }   
+        def responsibleUserNames = userApi.findUsers(builders.get('FindUsersRequest').userIds(uuidList)
+                                        .build()).getResults()*.getUserName()
+        loggerApi.info("-------------User names for the responsibility on domain------------ "+responsibleUserNames)
+        return responsibleUserNames
+    }
+
+    //Method to call approval workflow using workflowInstanceApi's "startWorkflowInstances"    
+    def callWorkflow(workflowId, assetIdList, userId, formProperties) {    
+        workflowInstanceApi.startWorkflowInstances(builders.get("StartWorkflowInstancesRequest").workflowDefinitionId(workflowId)
+            .businessItemType(WorkflowBusinessItemType.ASSET)
+            .businessItemIds(assetIdList).guestUserId(userId[0])
+            .formProperties(formProperties).build())
+
+        loggerApi.info("----------------Workflow Call Successful----------------")
+    }]]></script>
+    </scriptTask>
+    <endEvent id="end" name="End"></endEvent>
+    <sequenceFlow id="getGlossaryDomainIdFlow" sourceRef="start" targetRef="getGlossaryDomainId"></sequenceFlow>
+    <sequenceFlow id="callApprovalProcessFlow" sourceRef="createAsset" targetRef="end"></sequenceFlow>
+    <scriptTask id="getGlossaryDomainId" name="Get Glossary Domain Id" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[domainTypeID = domainTypeApi.findDomainTypes(builders.get("FindDomainTypesRequest").name(domainType).build()).getResults()*.getId()
+loggerApi.info("Glossary Domain Id: "+domainTypeID)
+execution.setVariable("domainTypeId", domainTypeID[0])]]></script>
+    </scriptTask>
+    <userTask id="setDomain" name="Set Domain" activiti:candidateUsers="user(${requester})">
+      <extensionElements>
+        <activiti:formProperty id="domain" name="Domain*" type="vocabulary" required="true">
+          <activiti:value id="proposedValues" name="${utility.toIdList(domainApi.findDomains(builders.get(&quot;FindDomainsRequest&quot;).typeId(domainTypeId).build()).getResults())}"></activiti:value>
+          <activiti:value id="proposedFixed" name="true"></activiti:value>
+          <activiti:value id="multiValue" name="false"></activiti:value>
+        </activiti:formProperty>
+        <activiti:formProperty id="note" name="Reason For Proposal" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="submit" name="Submit" type="button" required="true"></activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="setDomainFlow" sourceRef="getGlossaryDomainId" targetRef="setDomain"></sequenceFlow>
+    <sequenceFlow id="createAssetFlow" sourceRef="setDomain" targetRef="createAsset"></sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Collaboration">
+    <bpmndi:BPMNPlane bpmnElement="Collaboration" id="BPMNPlane_Collaboration">
+      <bpmndi:BPMNShape bpmnElement="businessTermProposalWorkflow" id="BPMNShape_businessTermProposalWorkflow">
+        <omgdc:Bounds height="180.0" width="641.0" x="410.0" y="190.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="businessTermProposalLane" id="BPMNShape_businessTermProposalLane">
+        <omgdc:Bounds height="180.0" width="621.0" x="430.0" y="190.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="start" id="BPMNShape_start">
+        <omgdc:Bounds height="35.0" width="35.0" x="450.0" y="270.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="createAsset" id="BPMNShape_createAsset">
+        <omgdc:Bounds height="55.0" width="105.0" x="830.0" y="260.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="end" id="BPMNShape_end">
+        <omgdc:Bounds height="35.0" width="35.0" x="980.0" y="270.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="getGlossaryDomainId" id="BPMNShape_getGlossaryDomainId">
+        <omgdc:Bounds height="55.0" width="141.0" x="520.0" y="260.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="setDomain" id="BPMNShape_setDomain">
+        <omgdc:Bounds height="55.0" width="105.0" x="680.0" y="260.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="getGlossaryDomainIdFlow" id="BPMNEdge_getGlossaryDomainIdFlow">
+        <omgdi:waypoint x="485.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="520.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="callApprovalProcessFlow" id="BPMNEdge_callApprovalProcessFlow">
+        <omgdi:waypoint x="935.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="980.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="setDomainFlow" id="BPMNEdge_setDomainFlow">
+        <omgdi:waypoint x="661.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="680.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="createAssetFlow" id="BPMNEdge_createAssetFlow">
+        <omgdi:waypoint x="785.0" y="287.0"></omgdi:waypoint>
+        <omgdi:waypoint x="830.0" y="287.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

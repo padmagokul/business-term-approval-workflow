@@ -1,0 +1,858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.collibra.com/apiv2">
+  <collaboration id="Collaboration">
+    <participant id="customApprovalProcess" name="Custom Approval Workflow" processRef="customApprovalWorkflow"></participant>
+  </collaboration>
+  <process id="customApprovalWorkflow" name="Custom Approval Workflow" isExecutable="true">
+    <documentation>This is a custom approval workflow involving various users, who will review the proposed asset.</documentation>
+    <laneSet id="laneSet_customApprovalWorkflow">
+      <lane id="startUserLane">
+        <flowNodeRef>start</flowNodeRef>
+        <flowNodeRef>end</flowNodeRef>
+        <flowNodeRef>markAsRejected</flowNodeRef>
+      </lane>
+      <lane id="dgAdminLane" name="DG Admin">
+        <flowNodeRef>callactivity1</flowNodeRef>
+        <flowNodeRef>markAsUnderReview</flowNodeRef>
+        <flowNodeRef>addCommentsToAsset</flowNodeRef>
+        <flowNodeRef>conditionalGateway1</flowNodeRef>
+        <flowNodeRef>checkProposedAsset1</flowNodeRef>
+      </lane>
+      <lane id="dgAnalystLane" name="DG Analyst">
+        <flowNodeRef>checkProposedAsset2</flowNodeRef>
+        <flowNodeRef>addAcronymRelationToAsset</flowNodeRef>
+        <flowNodeRef>conditionalGateway2</flowNodeRef>
+        <flowNodeRef>addTables</flowNodeRef>
+        <flowNodeRef>listColumns</flowNodeRef>
+        <flowNodeRef>selectColumns</flowNodeRef>
+        <flowNodeRef>addColumnRelation</flowNodeRef>
+      </lane>
+      <lane id="technicalStewardLane" name="Technical Steward">
+        <flowNodeRef>reviewColumns</flowNodeRef>
+        <flowNodeRef>addComments</flowNodeRef>
+        <flowNodeRef>conditionalGateway3</flowNodeRef>
+      </lane>
+      <lane id="businessStewardLane" name="Business Steward">
+        <flowNodeRef>voteSubprocess</flowNodeRef>
+        <flowNodeRef>conditionalGateway4</flowNodeRef>
+        <flowNodeRef>markAsAccepted</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start" name="Start">
+      <extensionElements>
+        <activiti:formProperty id="underReviewStatus" name="Under Review Status" type="string" default="Under Review" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="assetId" name="Asset ID" type="string" default="outputCreatedTermId" readable="false"></activiti:formProperty>
+        <activiti:formProperty id="acceptedStatus" name="Accepted Status" type="string" default="Accepted" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="rejectedStatus" name="Rejected Status" type="string" default="Rejected" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="acronymRelation" name="Acronym Relation" type="string" default="has acronym" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="columnRelation" name="Column Relation" type="string" default="is part of" required="true"></activiti:formProperty>
+        <activiti:formProperty id="representsRelation" name="Represents Relation" type="string" default="represents" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="acronymRelationSourceType" name="Acronym Relation Source Type" type="string" default="Business Asset" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="acronymRelationTargetType" name="Acronym Relation Target Type" type="string" default="Acronym" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="columnSourceType" name="Column Source Type" type="string" default="Column" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="technicalStewardRole" name="Technical Steward" type="string" default="Technical Steward" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="businessStewardRole" name="Business Steward" type="string" default="Business Steward" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="voteCompletionPercentage" name="Vote Completion Percentage" type="long" default="100" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="acronymConceptType" name="Acronym Concept Type" type="string" default="Acronym" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="tableConceptType" name="Table Concept Type" type="string" default="Table" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="dgAnalystRole" name="DG Analyst" type="string" default="DG Analyst" readable="false" required="true"></activiti:formProperty>
+        <activiti:formProperty id="voteTimeoutDuration" name="Vote completion time" type="string" default="B5D" readable="false" required="true"></activiti:formProperty>
+      </extensionElements>
+    </startEvent>
+    <endEvent id="end" name="End"></endEvent>
+    <userTask id="checkProposedAsset1" name="Check Proposed Asset" activiti:candidateUsers="${dgAdmin}">
+      <documentation>Please review the proposed business term and provide comments.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="assetName" name="Name" type="string" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="assetDefinition" name="Definition" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="changedDomain" name="Domain" type="vocabulary"></activiti:formProperty>
+        <activiti:formProperty id="assetNote" name="Reason For Proposal" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="adminComment" name="&lt;font color=&quot;red&quot;&gt;DG Admin Comment*&lt;/font&gt;" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="approve" name="Approve" type="button" required="true"></activiti:formProperty>
+        <activiti:formProperty id="reject" name="Reject" type="button" required="true"></activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="addCommentsAndFindUsersFlow" sourceRef="checkProposedAsset1" targetRef="addCommentsToAsset"></sequenceFlow>
+    <exclusiveGateway id="conditionalGateway1" name="Exclusive Gateway"></exclusiveGateway>
+    <sequenceFlow id="approvedFlow1" name="Approved" sourceRef="conditionalGateway1" targetRef="checkProposedAsset2">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approve==true}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="underReviewStatusFlow" sourceRef="start" targetRef="markAsUnderReview"></sequenceFlow>
+    <sequenceFlow id="rejectionFlow1" name="Rejected" sourceRef="conditionalGateway1" targetRef="markAsRejected">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reject==true}]]></conditionExpression>
+    </sequenceFlow>
+    <scriptTask id="markAsUnderReview" name="Mark As Under Review" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Mark as under review Script
+Author: N. Padma Gokul
+Version: v1.1
+Version History: Implemented the way to get status ID by configuration variable
+Purpose: This script is used to change the status of the asset
+*/
+
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+//Method to change the status of the asset
+def changeStatus(assetId, underReviewStatusId){
+    def changedAsset = assetApi.changeAsset(builders.get("ChangeAssetRequest").id(string2Uuid(assetId))
+        .statusId(underReviewStatusId).build())
+    loggerApi.info("-----Under Review Id "+underReviewStatusId)
+}
+
+try{
+    def underReviewStatusId = statusApi.getStatusByName(underReviewStatus).getId()
+    //Method call
+    changeStatus(assetId, underReviewStatusId)
+}
+catch(Exception e){
+    String errorMessage = translation.getMessage("Status: "+underReviewStatus+" not found")
+    String errorTitle = translation.getMessage("statusNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}]]></script>
+    </scriptTask>
+    <sequenceFlow id="checkProposedAssetFlow" sourceRef="markAsUnderReview" targetRef="checkProposedAsset1"></sequenceFlow>
+    <scriptTask id="addCommentsToAsset" name="Add Comments To Asset" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Add Comments Script
+Author: N. Padma Gokul
+Version: v1.1
+Version History: Changed the way of assigning users to task
+Purpose: This script is used to add comments to the asset and get DG Analyst user.
+*/
+
+import com.collibra.dgc.core.api.model.ResourceType
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+comments = adminComment.toString()
+loggerApi.info("--Comments--"+comments)
+if(comments.isEmpty()){
+    loggerApi.error("Please provide comments.")
+    String errorMessage = translation.getMessage("Please provide comments.")
+    String errorTitle = translation.getMessage("commentsNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}
+else{
+    //Add Comments to asset
+    dgAdminComment = commentApi.addComment(builders.get("AddCommentRequest").baseResourceId(string2Uuid(assetId))
+                        .baseResourceType(ResourceType.Asset).content(adminComment.toString()).build())
+    loggerApi.info('--------Comments added successfully----------'+adminComment)
+
+    //Get acronym UUID to show only acronyms while adding acronym relations
+    def acronymUUID = assetTypeApi.findAssetTypes(builders.get("FindAssetTypesRequest").name(acronymConceptType).build()).getResults()*.getId()
+    loggerApi.info("Got Acronym UUID: "+acronymUUID)
+    execution.setVariable("acronymID", acronymUUID[0])
+
+    //Find the users(ID's) that are responsible for the target domain with specified role
+    def responsibleUsers = responsibleUsers(changedDomain, dgAnalystRole)
+    def dgAnalystUserList = []
+
+    //Build the user expression for user task
+    for(int user=0; user<responsibleUsers.size;user++){
+        dgAnalystUserList.add("user("+responsibleUsers[user]+")")
+    }
+
+    //Convert the list to CSV to use in user tasks
+    dgAnalystUsers = utility.toCsv(dgAnalystUserList)
+    loggerApi.info("--------CSV User-------"+dgAnalystUsers)
+
+    execution.setVariable('dgAnalyst', dgAnalystUsers)
+    loggerApi.info('------Responsible user fetched successfully------')
+}
+
+//User defined methods start here
+//Method to find the users(ID's) that are responsible for the target domain with specified role
+def responsibleUsers(changedDomain, roleName) {
+
+    //Add the target domain to the list to get the users responsible for that domain
+    def targetDomain = []
+    targetDomain.add(changedDomain)
+    loggerApi.info('-------Target Domain Fetched------'+targetDomain)
+
+    //Get Role ID for the given role
+    def roleId = roleApi.findRoles(builders.get('FindRolesRequest').name(roleName) 
+                    .build()).getResults()*.getId()
+
+    //Fetch the responsible user Id's
+    def responsibleUserIds = responsibilityApi.findResponsibilities(builders.get('FindResponsibilitiesRequest')
+                                .resourceIds(targetDomain).roleIds(roleId) 
+                                .build()).getResults()*.getOwner()*.getId()
+    loggerApi.info("-------------User IDs for the responsibility on domain------------ "+responsibleUserIds)
+
+    if(responsibleUserIds.isEmpty()){
+        loggerApi.error("No users found for the specified role")
+        String errorMessage = translation.getMessage("No users found for the specified role")
+        String errorTitle = translation.getMessage("usersNotFound");
+        WorkflowException workflowException = new WorkflowException(errorMessage);
+        workflowException.setTitleMessage(errorTitle);
+        throw workflowException;
+    }
+
+    def uuidList =[]
+    for(userIds in responsibleUserIds){
+        uuidList.add(uuid2String(userIds))
+    }   
+    def responsibleUserNames = userApi.findUsers(builders.get('FindUsersRequest').userIds(uuidList)
+                                    .build()).getResults()*.getUserName()
+    loggerApi.info("-------------User names for the responsibility on domain------------ "+responsibleUserNames)
+    return responsibleUserNames
+}]]></script>
+    </scriptTask>
+    <userTask id="checkProposedAsset2" name="Check Proposed Asset" activiti:candidateUsers="${dgAnalyst}">
+      <documentation>Please review the proposed business term and provide acronym relations if any.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="assetName" name="Name" type="string" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="assetDefinition" name="Definition" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="assetNote" name="Reason For Proposal" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="adminComment" name="DG Admin Comment" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="changedDomain" name="Domain" type="vocabulary"></activiti:formProperty>
+        <activiti:formProperty id="analystComment" name="DG Analyst Comment*" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="relatedAsset" name="Add Acronym Relation if any" type="term">
+          <activiti:value id="conceptType" name="${acronymID}"></activiti:value>
+          <activiti:value id="multiValue" name="true"></activiti:value>
+        </activiti:formProperty>
+        <activiti:formProperty id="approve" name="Accepted" type="button" required="true"></activiti:formProperty>
+        <activiti:formProperty id="rejected" name="Rejected" type="button" required="true"></activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="gatewayFlow1" sourceRef="addCommentsToAsset" targetRef="conditionalGateway1"></sequenceFlow>
+    <exclusiveGateway id="conditionalGateway2" name="Exclusive Gateway"></exclusiveGateway>
+    <scriptTask id="addAcronymRelationToAsset" name="Add Acronym Relation To Asset" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Add Acronym Relation Script
+Author: N. Padma Gokul
+Version: v1.2
+Version History: v1.1 Added the method to get Technical and Business Steward users in single script.
+                 v1.2 Changed the way of assigning users to task
+Purpose: This script is used to add comments and acronym relation to the asset
+*/
+
+import com.collibra.dgc.core.api.model.ResourceType
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+comments = analystComment.toString()
+loggerApi.info("--Comments--"+comments)
+
+if(comments.isEmpty()){
+    loggerApi.error("Please provide comments.")
+    String errorMessage = translation.getMessage("Please provide comments.")
+    String errorTitle = translation.getMessage("commentsNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}
+else{
+    //Add Comments to asset
+    commentApi.addComment(builders.get("AddCommentRequest").baseResourceId(string2Uuid(assetId))
+            .baseResourceType(ResourceType.Asset).content(analystComment.toString()).build())
+    loggerApi.info('--------Comments added successfully----------')
+
+    //Get Table UUID to show only table while adding table relations
+    def tableUUID = assetTypeApi.findAssetTypes(builders.get("FindAssetTypesRequest").name(tableConceptType).build()).getResults()*.getId()
+    loggerApi.info("Got Table UUID: "+tableUUID)
+    execution.setVariable("tableID", tableUUID[0])
+
+    //Find the users(ID's) that are responsible for the target domain with specified role
+    loggerApi.info("----changed domain------"+changedDomain)
+    def technicalStewardUser = responsibleUsers(changedDomain, technicalStewardRole)
+    def businessStewardUser = responsibleUsers(changedDomain, businessStewardRole)
+
+    //Build the user expression for user task
+    def technicalStewardsUserList = []
+    for(int user=0; user<technicalStewardUser.size; user++){
+        technicalStewardsUserList.add("user("+technicalStewardUser[user]+")")
+    }
+
+    //Convert the list to CSV to use in user tasks
+    def technicalStewardsUserCsv = utility.toCsv(technicalStewardsUserList)
+    execution.setVariable('technicalStewards', technicalStewardsUserCsv)
+    execution.setVariable('businessStewards', businessStewardUser)
+    loggerApi.info('------Responsible user fetched successfully------')
+
+    //Set the acronym asset to variable
+    def relatedAsset = execution.getVariable("relatedAsset")
+    
+    //Get Acronym Relation UUID
+    loggerApi.info("----Adding Acoronyms to BT-------")
+    acronymRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest")
+                                    .sourceTypeName(acronymRelationSourceType).targetTypeName(acronymRelationTargetType)
+                                    .role(acronymRelation).build()).getResults()*.getId()
+    loggerApi.info("-----Got acronym id------"+acronymRelationId)
+    addRelationToAsset(assetId, acronymRelationId, relatedAsset)
+}
+
+    //User Defined method starts here
+    //Method to add any acronym relation to asset
+    def addRelationToAsset(def sourceUuid,def relationTypeUuid,def targetUuid) {
+           if (targetUuid == null || targetUuid.isEmpty()){
+                return;
+           }
+       
+           relationApi.addRelation(builders.get("AddRelationRequest")
+                   .sourceId(string2Uuid(sourceUuid)).targetId(targetUuid)
+                   .typeId(relationTypeUuid).build())
+        }
+
+    //Method to find the users(ID's) that are responsible for the target domain with specified role
+    def responsibleUsers(newDomain, roleName) {
+
+        //Add the target domain to the list to get the users responsible for that domain
+        def responsibilityList = []
+        responsibilityList.add(newDomain)
+
+        //Get Role ID for the given role
+        def rolesIdList = roleApi.findRoles(builders.get('FindRolesRequest').name(roleName) 
+                            .build()).getResults()*.getId()
+
+        //Fetch the responsible user Id's
+        def responsibleUserIds = responsibilityApi.findResponsibilities(builders.get('FindResponsibilitiesRequest')
+                                    .resourceIds(responsibilityList).roleIds(rolesIdList) 
+                                    .build()).getResults()*.getOwner()*.getId()
+        loggerApi.info("-------------User IDs for the responsibility on target domain------------ "+responsibleUserIds)
+
+        if(responsibleUserIds.isEmpty()){
+            loggerApi.error("No users found for the specified role")
+            String errorMessage = translation.getMessage("No users found for the specified role")
+            String errorTitle = translation.getMessage("usersNotFound");
+            WorkflowException workflowException = new WorkflowException(errorMessage);
+            workflowException.setTitleMessage(errorTitle);
+            throw workflowException;
+        }
+
+        def uuidList =[]
+        for(userIds in responsibleUserIds){
+            uuidList.add(uuid2String(userIds))
+        }   
+        def responsibleUserNames = userApi.findUsers(builders.get('FindUsersRequest').userIds(uuidList)
+                                        .build()).getResults()*.getUserName()
+        loggerApi.info("-------------User names for the responsibility on target domain------------ "+responsibleUserNames)
+        return responsibleUserNames
+    }]]></script>
+    </scriptTask>
+    <sequenceFlow id="addAcronymAndCommentsFlow" sourceRef="checkProposedAsset2" targetRef="addAcronymRelationToAsset"></sequenceFlow>
+    <sequenceFlow id="gatewayFlow2" sourceRef="addAcronymRelationToAsset" targetRef="conditionalGateway2"></sequenceFlow>
+    <sequenceFlow id="rejectionFlow2" name="Rejected" sourceRef="conditionalGateway2" targetRef="markAsUnderReview">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${rejected==true}]]></conditionExpression>
+    </sequenceFlow>
+    <scriptTask id="markAsRejected" name="Mark As Rejected" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Mark as rejected Script
+Author: N. Padma Gokul
+Version: v1.1
+Version History: Implemented the way to get status ID by configuration variable
+Purpose: This script is used to change the status of the asset
+*/
+
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+//Method to change the status of the asset
+def changeStatus(assetId, rejectedStatusId){
+    def changedAsset = assetApi.changeAsset(builders.get("ChangeAssetRequest").id(string2Uuid(assetId))
+        .statusId(rejectedStatusId).build())
+}
+
+try{
+    def rejectedStatusId = statusApi.getStatusByName(rejectedStatus).getId()
+    //Method call
+    changeStatus(assetId, rejectedStatusId)
+}
+catch(Exception e){
+    String errorMessage = translation.getMessage("Status: "+rejectedStatus+" not found")
+    String errorTitle = translation.getMessage("statusNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}
+
+]]></script>
+    </scriptTask>
+    <sequenceFlow id="endFlow1" sourceRef="markAsRejected" targetRef="end"></sequenceFlow>
+    <sequenceFlow id="approvedFlow2" name="Approved" sourceRef="conditionalGateway2" targetRef="addTables">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${approve==true}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="addTables" name="Add Required Tables" activiti:candidateUsers="${dgAnalyst}">
+      <documentation>Add related tables to the asset.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="relatedTables" name="Add Tables" type="term">
+          <activiti:value id="multiValue" name="true"></activiti:value>
+          <activiti:value id="conceptType" name="${tableID}"></activiti:value>
+        </activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <scriptTask id="listColumns" name="List Columns" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: List Columns Script
+Author: N. Padma Gokul
+Version: v1.0
+Version History: -
+Purpose: This script is used to list all the columns of the added tables.
+*/
+
+def tableList = []
+def targetList = []
+def columnsList = []
+
+columnRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(columnRelation).sourceTypeName(columnSourceType)
+                                .build()).getResults()*.getId()
+
+//Get all source columns from given table(s)
+relatedTables.each{t ->
+        tableList.add(relationApi.findRelations(builders.get("FindRelationsRequest")
+            .relationTypeId(columnRelationId)
+            .targetId(t).build()).getResults()*.getSource())
+}
+
+//Get all target tables from given table(s)
+relatedTables.each{t ->
+        targetList.add(relationApi.findRelations(builders.get("FindRelationsRequest")
+            .relationTypeId(columnRelationId)
+            .targetId(t).build()).getResults()*.getTarget())
+}
+
+//Add columns to list to show to DG Analyst
+loggerApi.info("---------Source Columns List----------"+tableList)
+loggerApi.info("---------Target Table List----------"+targetList)
+
+for(i=0;i<tableList.size;i++){
+    for(tables in tableList[i]){
+        columnsList.add(tables.getId())
+    }
+}
+
+execution.setVariable("columnList", columnsList)
+
+loggerApi.info("---------Columns List----------"+columnsList)]]></script>
+    </scriptTask>
+    <sequenceFlow id="listColumnsFlow" sourceRef="addTables" targetRef="listColumns"></sequenceFlow>
+    <userTask id="selectColumns" name="Select Columns" activiti:candidateUsers="${dgAnalyst}">
+      <documentation>Select the columns from the tables added.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="addColumns" name="Add Columns" type="term">
+          <activiti:value id="multiValue" name="true"></activiti:value>
+          <activiti:value id="proposedFixed" name="true"></activiti:value>
+          <activiti:value id="proposedValues" name="${columnList}"></activiti:value>
+        </activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="selectColumnsFlow" sourceRef="listColumns" targetRef="selectColumns"></sequenceFlow>
+    <scriptTask id="addColumnRelation" name="Add Column Relation" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: List Columns Script
+Author: N. Padma Gokul
+Version: v1.0
+Version History: -
+Purpose: This script is used to add the column relation to the asset.
+*/
+
+    representsRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(representsRelation).sourceTypeName("Business Term")
+                                    .build()).getResults()*.getId()
+
+    loggerApi.info("---------Selected columns-------"+addColumns)
+
+    columnRelationId = relationTypeApi.findRelationTypes(builders.get("FindRelationTypesRequest").role(columnRelation).sourceTypeName(columnSourceType)
+                              .build()).getResults()*.getId()
+
+    def addRelation = []
+    //Add "represents" relation to asset
+    addColumns.each{t ->
+        addRelation.add(builders.get("AddRelationRequest").sourceId(string2Uuid(assetId)).targetId(t)
+            .typeId(representsRelationId[0]).build())
+    }
+
+      relationApi.addRelations(addRelation)
+      loggerApi.info("-----Column Relation added--------")
+
+      //Get the added column names to display to technical steward
+      def dgcUrl = "http://192.168.168.22:4500/asset/"
+      def columnNames = []
+      def tableList = []
+      def tableId = []
+      def tableName = []
+      def columnTableLink = []
+      def columnUrl = []
+
+      //Get the table details for added columns
+      addColumns.each{ t ->
+        tableList.add(relationApi.findRelations(builders.get("FindRelationsRequest")
+            .relationTypeId(columnRelationId)
+            .sourceId(t).build()).getResults()*.getTarget())
+    }
+
+      //Get the table Id from table details
+      for(int tableNo=0; tableNo<tableList.size; tableNo++){
+          for(tables in tableList[tableNo]){
+              tableId.add(tables.getId())
+         }
+      }
+
+      loggerApi.info("-----Table Id for each column------"+tableId)
+
+      //Get the column name
+      addColumns.each{ t ->
+      columnNames.add(assetApi.getAsset(t).getName())
+      }
+
+      addColumns.each{ t ->
+      columnUrl.add(dgcUrl+t)
+      }
+
+      loggerApi.info("------Column URL-----"+columnUrl)
+
+      //Get the table name (Need to test this..)
+      tableId.each{ t ->
+      tableName.add(assetApi.getAsset(t).getName()) 
+      }
+
+      loggerApi.info("-------Table Names--------"+tableName)
+
+      //Script to display the Column name and it's source table name
+      def table = 0
+      def url = 0
+      for(def column = 0; column<columnNames.size; column++){
+        def tableHyperlink = "<a href="+columnUrl[url]+" target=_blank>"
+        loggerApi.info("--Link--"+tableHyperlink)
+        def closeTag = "</a>"
+        columnTableLink.add("Column Name: "+tableHyperlink+columnNames[column]+closeTag+"; Table Name: "+tableName[table])
+        table++
+        url++
+      }
+
+      loggerApi.info("------Column Names------"+columnTableLink)
+      execution.setVariable("columnNames", columnTableLink.join(', '))
+
+]]></script>
+    </scriptTask>
+    <sequenceFlow id="addColumnRelationFlow" sourceRef="selectColumns" targetRef="addColumnRelation"></sequenceFlow>
+    <sequenceFlow id="reviewColumnsFlow" sourceRef="addColumnRelation" targetRef="reviewColumns"></sequenceFlow>
+    <userTask id="reviewColumns" name="Review Columns" activiti:candidateUsers="${technicalStewards}">
+      <documentation>Please review the columns added by DG Analyst.</documentation>
+      <extensionElements>
+        <activiti:formProperty id="columnNames" name="Columns" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="adminComment" name="DG Admin Comment" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="analystComment" name="DG Analyst Comment" type="textarea" writable="false"></activiti:formProperty>
+        <activiti:formProperty id="technicalStewardComment" name="Technical Steward Comment*" type="textarea"></activiti:formProperty>
+        <activiti:formProperty id="accepted" name="Accept" type="button" required="true"></activiti:formProperty>
+        <activiti:formProperty id="rejected" name="Rejected" type="button" required="true"></activiti:formProperty>
+      </extensionElements>
+    </userTask>
+    <scriptTask id="addComments" name="Add Comments" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*Add Comments V 1.0
+Author: N. Padma Gokul
+Description: This script is used to add the comments to 
+the asset.
+*/
+
+import com.collibra.dgc.core.api.model.ResourceType   
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+comments = technicalStewardComment.toString()
+loggerApi.info("--Comments--"+comments)
+
+if(comments.isEmpty()){
+    loggerApi.error("Please provide comments.")
+    String errorMessage = translation.getMessage("Please provide comments.")
+    String errorTitle = translation.getMessage("commentsNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}
+else{
+	commentApi.addComment(builders.get("AddCommentRequest")
+        .baseResourceId(string2Uuid(assetId))
+        .baseResourceType(ResourceType.Asset)
+        .content(technicalStewardComment.toString()).build())
+}            ]]></script>
+    </scriptTask>
+    <sequenceFlow id="addCommentsFlow" sourceRef="reviewColumns" targetRef="addComments"></sequenceFlow>
+    <exclusiveGateway id="conditionalGateway3" name="Exclusive Gateway"></exclusiveGateway>
+    <sequenceFlow id="gatewayFlow3" sourceRef="addComments" targetRef="conditionalGateway3"></sequenceFlow>
+    <sequenceFlow id="rejectionFlow3" name="Rejected" sourceRef="conditionalGateway3" targetRef="checkProposedAsset2">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${rejected==true}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="approvedFlow3" name="Accepted" sourceRef="conditionalGateway3" targetRef="voteSubprocess">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${accepted==true}]]></conditionExpression>
+    </sequenceFlow>
+    <exclusiveGateway id="conditionalGateway4" name="Exclusive Gateway"></exclusiveGateway>
+    <callActivity id="callactivity1" name="Voting Sub Process" calledElement="votingSubProcess" activiti:inheritVariables="false"></callActivity>
+    <scriptTask id="markAsAccepted" name="Mark As Accepted" scriptFormat="groovy" activiti:autoStoreVariables="false">
+      <script><![CDATA[/*
+Script Name: Mark as accepted Script
+Author: N. Padma Gokul
+Version: v1.1
+Version History: Implemented the way to get status ID by configuration variable
+Purpose: This script is used to change the status of the asset
+*/
+
+import com.collibra.dgc.workflow.api.exception.WorkflowException
+
+
+try{
+    def acceptedStatusId = statusApi.getStatusByName(acceptedStatus).getId()
+    //Method call
+    changeStatus(assetId, acceptedStatusId)
+}
+catch(Exception e){
+    String errorMessage = translation.getMessage("Status: "+acceptedStatus+" not found")
+    String errorTitle = translation.getMessage("statusNotFound");
+    WorkflowException workflowException = new WorkflowException(errorMessage);
+    workflowException.setTitleMessage(errorTitle);
+    throw workflowException;
+}
+
+//Move the asset to target domain 
+loggerApi.info("------Target domain id-----"+changedDomain) 
+assetApi.changeAsset(builders.get("ChangeAssetRequest").id(string2Uuid(assetId)).domainId(changedDomain).build())
+
+//User Defined methods start
+//Method to change the status of the asset
+def changeStatus(assetId, acceptedStatusId){
+    assetApi.changeAsset(builders.get("ChangeAssetRequest").id(string2Uuid(assetId))
+        .statusId(acceptedStatusId).build())
+}]]></script>
+    </scriptTask>
+    <sequenceFlow id="acceptedFlow4" name="Accepted" sourceRef="conditionalGateway4" targetRef="markAsAccepted">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${votingResult}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="rejectionFlow4" name="Rejected" sourceRef="conditionalGateway4" targetRef="markAsRejected">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${!votingResult}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="endFlow2" sourceRef="markAsAccepted" targetRef="end"></sequenceFlow>
+    <callActivity id="voteSubprocess" name="Vote Subprocess" calledElement="approvalVotingSubProcess" activiti:inheritVariables="false">
+      <extensionElements>
+        <activiti:in sourceExpression="${'Please vote for the approval of the '}${item.getTypeName()}${'.'}${&quot; If you reject, please provide a reason for doing so.&quot;}" target="decisionInfo"></activiti:in>
+        <activiti:in source="voteCompletionPercentage" target="votePercentage"></activiti:in>
+        <activiti:in sourceExpression="${true}" target="addComments"></activiti:in>
+        <activiti:in sourceExpression="${true}" target="earlyComplete"></activiti:in>
+        <activiti:in source="voteTimeoutDuration" target="voteTimeoutDuration"></activiti:in>
+        <activiti:in sourceExpression="${&quot;Approve/Reject&quot;}" target="voteButtonLabel"></activiti:in>
+        <activiti:in sourceExpression="${&quot;Approval&quot;}" target="voteTaskName"></activiti:in>
+        <activiti:in source="sendVotingActionEmails" target="sendActionEmail"></activiti:in>
+        <activiti:in source="businessStewards" target="userNames"></activiti:in>
+        <activiti:out source="votingSuccess" target="votingResult"></activiti:out>
+      </extensionElements>
+    </callActivity>
+    <sequenceFlow id="gatewayFlow4" sourceRef="voteSubprocess" targetRef="conditionalGateway4"></sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Collaboration">
+    <bpmndi:BPMNPlane bpmnElement="Collaboration" id="BPMNPlane_Collaboration">
+      <bpmndi:BPMNShape bpmnElement="customApprovalProcess" id="BPMNShape_customApprovalProcess">
+        <omgdc:Bounds height="1011.0" width="831.0" x="460.0" y="191.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="startUserLane" id="BPMNShape_startUserLane">
+        <omgdc:Bounds height="150.0" width="811.0" x="480.0" y="191.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="dgAdminLane" id="BPMNShape_dgAdminLane">
+        <omgdc:Bounds height="150.0" width="811.0" x="480.0" y="341.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="dgAnalystLane" id="BPMNShape_dgAnalystLane">
+        <omgdc:Bounds height="251.0" width="811.0" x="480.0" y="491.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="technicalStewardLane" id="BPMNShape_technicalStewardLane">
+        <omgdc:Bounds height="230.0" width="811.0" x="480.0" y="742.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="businessStewardLane" id="BPMNShape_businessStewardLane">
+        <omgdc:Bounds height="230.0" width="811.0" x="480.0" y="972.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="start" id="BPMNShape_start">
+        <omgdc:Bounds height="35.0" width="35.0" x="520.0" y="271.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="end" id="BPMNShape_end">
+        <omgdc:Bounds height="35.0" width="35.0" x="1240.0" y="261.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="checkProposedAsset1" id="BPMNShape_checkProposedAsset1">
+        <omgdc:Bounds height="55.0" width="145.0" x="675.0" y="401.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="conditionalGateway1" id="BPMNShape_conditionalGateway1">
+        <omgdc:Bounds height="40.0" width="40.0" x="1000.0" y="408.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="markAsUnderReview" id="BPMNShape_markAsUnderReview">
+        <omgdc:Bounds height="61.0" width="135.0" x="510.0" y="398.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="addCommentsToAsset" id="BPMNShape_addCommentsToAsset">
+        <omgdc:Bounds height="58.0" width="151.0" x="840.0" y="401.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="checkProposedAsset2" id="BPMNShape_checkProposedAsset2">
+        <omgdc:Bounds height="55.0" width="141.0" x="520.0" y="541.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="conditionalGateway2" id="BPMNShape_conditionalGateway2">
+        <omgdc:Bounds height="40.0" width="40.0" x="1000.0" y="548.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="addAcronymRelationToAsset" id="BPMNShape_addAcronymRelationToAsset">
+        <omgdc:Bounds height="55.0" width="111.0" x="750.0" y="541.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="markAsRejected" id="BPMNShape_markAsRejected">
+        <omgdc:Bounds height="55.0" width="115.0" x="1080.0" y="251.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="addTables" id="BPMNShape_addTables">
+        <omgdc:Bounds height="55.0" width="128.0" x="957.0" y="651.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="listColumns" id="BPMNShape_listColumns">
+        <omgdc:Bounds height="55.0" width="105.0" x="820.0" y="651.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="selectColumns" id="BPMNShape_selectColumns">
+        <omgdc:Bounds height="55.0" width="105.0" x="680.0" y="651.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="addColumnRelation" id="BPMNShape_addColumnRelation">
+        <omgdc:Bounds height="55.0" width="135.0" x="520.0" y="651.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="reviewColumns" id="BPMNShape_reviewColumns">
+        <omgdc:Bounds height="55.0" width="105.0" x="540.0" y="810.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="addComments" id="BPMNShape_addComments">
+        <omgdc:Bounds height="55.0" width="105.0" x="760.0" y="810.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="conditionalGateway3" id="BPMNShape_conditionalGateway3">
+        <omgdc:Bounds height="40.0" width="40.0" x="940.0" y="817.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="conditionalGateway4" id="BPMNShape_conditionalGateway4">
+        <omgdc:Bounds height="40.0" width="40.0" x="900.0" y="1054.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="callactivity1" id="BPMNShape_callactivity1">
+        <omgdc:Bounds height="55.0" width="115.0" x="690.0" y="1047.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="markAsAccepted" id="BPMNShape_markAsAccepted">
+        <omgdc:Bounds height="55.0" width="115.0" x="1020.0" y="1047.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="voteSubprocess" id="BPMNShape_voteSubprocess">
+        <omgdc:Bounds height="55.0" width="115.0" x="690.0" y="1047.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="addCommentsAndFindUsersFlow" id="BPMNEdge_addCommentsAndFindUsersFlow">
+        <omgdi:waypoint x="820.0" y="428.0"></omgdi:waypoint>
+        <omgdi:waypoint x="840.0" y="430.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="approvedFlow1" id="BPMNEdge_approvedFlow1">
+        <omgdi:waypoint x="1020.0" y="448.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1019.0" y="509.0"></omgdi:waypoint>
+        <omgdi:waypoint x="813.0" y="509.0"></omgdi:waypoint>
+        <omgdi:waypoint x="610.0" y="509.0"></omgdi:waypoint>
+        <omgdi:waypoint x="590.0" y="541.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="53.0" x="1000.0" y="457.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="underReviewStatusFlow" id="BPMNEdge_underReviewStatusFlow">
+        <omgdi:waypoint x="555.0" y="288.0"></omgdi:waypoint>
+        <omgdi:waypoint x="577.0" y="288.0"></omgdi:waypoint>
+        <omgdi:waypoint x="577.0" y="398.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="rejectionFlow1" id="BPMNEdge_rejectionFlow1">
+        <omgdi:waypoint x="1020.0" y="408.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1019.0" y="278.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1080.0" y="278.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="51.0" x="1000.0" y="332.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="checkProposedAssetFlow" id="BPMNEdge_checkProposedAssetFlow">
+        <omgdi:waypoint x="645.0" y="428.0"></omgdi:waypoint>
+        <omgdi:waypoint x="675.0" y="428.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="gatewayFlow1" id="BPMNEdge_gatewayFlow1">
+        <omgdi:waypoint x="991.0" y="430.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1000.0" y="428.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="addAcronymAndCommentsFlow" id="BPMNEdge_addAcronymAndCommentsFlow">
+        <omgdi:waypoint x="661.0" y="568.0"></omgdi:waypoint>
+        <omgdi:waypoint x="750.0" y="568.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="gatewayFlow2" id="BPMNEdge_gatewayFlow2">
+        <omgdi:waypoint x="861.0" y="568.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1000.0" y="568.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="rejectionFlow2" id="BPMNEdge_rejectionFlow2">
+        <omgdi:waypoint x="1020.0" y="548.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1020.0" y="502.0"></omgdi:waypoint>
+        <omgdi:waypoint x="582.0" y="502.0"></omgdi:waypoint>
+        <omgdi:waypoint x="577.0" y="459.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="51.0" x="1007.0" y="468.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="endFlow1" id="BPMNEdge_endFlow1">
+        <omgdi:waypoint x="1195.0" y="278.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1240.0" y="278.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="approvedFlow2" id="BPMNEdge_approvedFlow2">
+        <omgdi:waypoint x="1020.0" y="588.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1021.0" y="651.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="53.0" x="1014.0" y="582.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="listColumnsFlow" id="BPMNEdge_listColumnsFlow">
+        <omgdi:waypoint x="957.0" y="678.0"></omgdi:waypoint>
+        <omgdi:waypoint x="925.0" y="678.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="selectColumnsFlow" id="BPMNEdge_selectColumnsFlow">
+        <omgdi:waypoint x="820.0" y="678.0"></omgdi:waypoint>
+        <omgdi:waypoint x="785.0" y="678.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="addColumnRelationFlow" id="BPMNEdge_addColumnRelationFlow">
+        <omgdi:waypoint x="680.0" y="678.0"></omgdi:waypoint>
+        <omgdi:waypoint x="655.0" y="678.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="reviewColumnsFlow" id="BPMNEdge_reviewColumnsFlow">
+        <omgdi:waypoint x="655.0" y="678.0"></omgdi:waypoint>
+        <omgdi:waypoint x="592.0" y="706.0"></omgdi:waypoint>
+        <omgdi:waypoint x="592.0" y="723.0"></omgdi:waypoint>
+        <omgdi:waypoint x="592.0" y="746.0"></omgdi:waypoint>
+        <omgdi:waypoint x="592.0" y="810.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="addCommentsFlow" id="BPMNEdge_addCommentsFlow">
+        <omgdi:waypoint x="645.0" y="837.0"></omgdi:waypoint>
+        <omgdi:waypoint x="760.0" y="837.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="gatewayFlow3" id="BPMNEdge_gatewayFlow3">
+        <omgdi:waypoint x="865.0" y="837.0"></omgdi:waypoint>
+        <omgdi:waypoint x="940.0" y="837.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="rejectionFlow3" id="BPMNEdge_rejectionFlow3">
+        <omgdi:waypoint x="960.0" y="817.0"></omgdi:waypoint>
+        <omgdi:waypoint x="959.0" y="777.0"></omgdi:waypoint>
+        <omgdi:waypoint x="508.0" y="777.0"></omgdi:waypoint>
+        <omgdi:waypoint x="508.0" y="572.0"></omgdi:waypoint>
+        <omgdi:waypoint x="520.0" y="568.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="51.0" x="956.0" y="755.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="approvedFlow3" id="BPMNEdge_approvedFlow3">
+        <omgdi:waypoint x="960.0" y="857.0"></omgdi:waypoint>
+        <omgdi:waypoint x="960.0" y="930.0"></omgdi:waypoint>
+        <omgdi:waypoint x="752.0" y="930.0"></omgdi:waypoint>
+        <omgdi:waypoint x="747.0" y="1047.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="55.0" x="959.0" y="857.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="acceptedFlow4" id="BPMNEdge_acceptedFlow4">
+        <omgdi:waypoint x="940.0" y="1074.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1020.0" y="1074.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="55.0" x="947.0" y="1066.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="rejectionFlow4" id="BPMNEdge_rejectionFlow4">
+        <omgdi:waypoint x="920.0" y="1054.0"></omgdi:waypoint>
+        <omgdi:waypoint x="920.0" y="1003.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1137.0" y="1003.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1137.0" y="306.0"></omgdi:waypoint>
+        <bpmndi:BPMNLabel>
+          <omgdc:Bounds height="16.0" width="51.0" x="911.0" y="940.0"></omgdc:Bounds>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="endFlow2" id="BPMNEdge_endFlow2">
+        <omgdi:waypoint x="1135.0" y="1074.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1257.0" y="1075.0"></omgdi:waypoint>
+        <omgdi:waypoint x="1257.0" y="296.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="gatewayFlow4" id="BPMNEdge_gatewayFlow4">
+        <omgdi:waypoint x="805.0" y="1074.0"></omgdi:waypoint>
+        <omgdi:waypoint x="900.0" y="1074.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
